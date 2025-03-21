@@ -5,33 +5,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.dicegame.ui.theme.DiceGameTheme
-import java.nio.file.Files.list
-
 
 val diceImages = listOf(
     R.drawable.one,
@@ -42,7 +27,7 @@ val diceImages = listOf(
     R.drawable.six
 )
 
-val diceValues = listOf(1,2,3,4,5,6)
+val diceValues = listOf(1, 2, 3, 4, 5, 6)
 
 class NewGame : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,29 +40,27 @@ class NewGame : ComponentActivity() {
 }
 
 @Composable
-fun Game(){
-    // setting state for five dices
-    val playerDiceState = remember{
-        mutableStateOf(List(5){diceImages[0]})
-    }
-    // setting state for five dices computer
-    val computerDiceState = remember{
-        mutableStateOf(List(5){diceImages[0]})
-    }
+fun Game() {
+    val playerDiceState = remember { mutableStateOf(List(5) { diceImages.random() }) }
+    val computerDiceState = remember { mutableStateOf(List(5) { diceImages.random() }) }
+    val currentPlayerValueState = remember { mutableStateOf(MutableList(5) { diceValues[0] }) }
+    val currentComputerValueState = remember { mutableStateOf(MutableList(5) { diceValues[0] }) }
 
-    val currentValueState = remember{
-        mutableStateOf(MutableList(5){diceValues[0]})
-    }
     var playerScore by remember { mutableStateOf(0) }
     var computerScore by remember { mutableStateOf(0) }
+    var canScore by remember { mutableStateOf(false) }
+    var throwType by remember { mutableStateOf("Throw") }
+    var reRollCount by remember { mutableStateOf(0) }
+
+    // Track which dice are selected
+    val selectedDice = remember { mutableStateListOf(false, false, false, false, false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        val context = LocalContext.current
-        Column (
+        Column(
             modifier = Modifier.align(Alignment.TopEnd).padding(30.dp)
-        ){
-            Text("Player Score: $playerScore")
+        ) {
             Text("Computer Score: $computerScore")
+            Text("Player Score: $playerScore")
         }
 
         Column(
@@ -85,10 +68,8 @@ fun Game(){
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
             Spacer(Modifier.height(50.dp))
 
-            // row to display dice images of human player
             Text("Computer")
             Spacer(Modifier.height(10.dp))
             Row(
@@ -103,9 +84,9 @@ fun Game(){
                             .size(60.dp)
                             .padding(8.dp)
                     )
-
                 }
             }
+
             Spacer(Modifier.height(30.dp))
 
             Text("Player")
@@ -114,54 +95,91 @@ fun Game(){
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.padding(16.dp)
             ) {
-                playerDiceState.value.forEach { dieceResource ->
+                playerDiceState.value.forEachIndexed { index, diceResource ->
                     Image(
-                        painter = painterResource(id = dieceResource),
+                        painter = painterResource(id = diceResource),
                         contentDescription = "Dice",
                         modifier = Modifier
                             .size(60.dp)
                             .padding(8.dp)
+                            .border(2.dp, if (selectedDice[index]) Color.Green else Color.Transparent)
+                            .clickable {
+                                if (throwType == "ReRoll")
+                                selectedDice[index] = !selectedDice[index] // Toggle selection
+                            }
                     )
-
                 }
             }
 
             Row {
-                // Throw button
+                // Throw / ReRoll button
                 Button(onClick = {
-                    playerDiceState.value = List(5) { diceImages.random() }
-                    computerDiceState.value = List(5) { diceImages.random() }
-                    valuesOfCurrentDices(playerDiceState.value, currentValueState.value)
-                    println(currentValueState)
+                    if (throwType == "Throw") {
+                        playerDiceState.value = List(5) { diceImages.random() }
+                        computerDiceState.value = List(5) { diceImages.random() }
+
+                        valuesOfCurrentDices(computerDiceState.value, currentComputerValueState.value)
+                        valuesOfCurrentDices(playerDiceState.value, currentPlayerValueState.value)
+
+                        canScore = true
+                        throwType = "ReRoll"
+                    } else if (throwType == "ReRoll") {
+                        playerDiceState.value = playerDiceState.value.mapIndexed { index, dice ->
+                            if (selectedDice[index]) dice else diceImages.random()
+                        }
+                        valuesOfCurrentDices(playerDiceState.value, currentPlayerValueState.value)
+
+                        canScore = true
+                        reRollCount++
+                        if (reRollCount == 2) {
+                            throwType = "Throw"
+                            reRollCount = 0
+                            computerScore = addComputerValues(currentComputerValueState.value, computerScore)
+                            playerScore = addPlayerValues(currentPlayerValueState.value, playerScore)
+
+                            // Reset selected dice after scoring
+                            selectedDice.fill(false)
+                        }
+                    }
                 }) {
-                    Text("Throw")
+                    Text(if (throwType == "Throw") "Throw" else "ReRoll")
                 }
 
                 Spacer(Modifier.width(20.dp))
+
                 // Score button
                 Button(onClick = {
-                    println("Score")
-                    playerScore = addPlayerValues(currentValueState.value, playerScore)
-                    println(playerScore)
+                    if (canScore) {
+                        computerScore = addComputerValues(currentComputerValueState.value, computerScore)
+                        playerScore = addPlayerValues(currentPlayerValueState.value, playerScore)
+
+                        canScore = false
+                        throwType = "Throw"
+
+                        // Reset selected dice after scoring
+                        selectedDice.fill(false)
+                    }
                 }) {
                     Text("Score")
                 }
             }
-
         }
     }
 }
 
-
 fun valuesOfCurrentDices(diceState: List<Int>, currentValueState: MutableList<Int>) {
     for (i in diceState.indices) {
-        val index = diceImages.indexOf(diceState[i]) // Find index in diceImages
+        val index = diceImages.indexOf(diceState[i])
         if (index != -1) {
-            currentValueState[i] = diceValues[index] // Map to corresponding diceValues
+            currentValueState[i] = diceValues[index]
         }
     }
 }
 
 fun addPlayerValues(currentValueState: List<Int>, playerScore: Int): Int {
     return playerScore + currentValueState.sum()
+}
+
+fun addComputerValues(currentValueState: List<Int>, computerScore: Int): Int {
+    return computerScore + currentValueState.sum()
 }
