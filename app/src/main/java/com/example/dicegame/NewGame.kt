@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,9 +44,6 @@ val diceImages = listOf(
 
 val diceValues = listOf(1,2,3,4,5,6)
 
-//var playerScore = 0
-var computerScore = 0
-
 class NewGame : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,74 +71,84 @@ fun Game(){
     var playerScore by remember { mutableStateOf(0) }
     var computerScore by remember { mutableStateOf(0) }
 
-    Column (
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ){
+    Box(modifier = Modifier.fillMaxSize()) {
         val context = LocalContext.current
-
-        Text("Player Score: $playerScore")
-        Text("Computer Score: $computerScore")
-
-        Spacer(Modifier.height(50.dp))
-
-        // row to display dice images of human player
-        Text("Computer")
-        Spacer(Modifier.height(10.dp))
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(16.dp)
+        Column (
+            modifier = Modifier.align(Alignment.TopEnd).padding(30.dp)
         ){
-            computerDiceState.value.forEach{ computerDieceResource ->
-                Image(
-                    painter = painterResource(id = computerDieceResource),
-                    contentDescription = "Dice",
-                    modifier = Modifier.size(60.dp).padding(8.dp)
-                )
-
-            }
-        }
-        Spacer(Modifier.height(30.dp))
-
-        Text("Player")
-        Spacer(Modifier.height(10.dp))
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(16.dp)
-        ){
-            playerDiceState.value.forEach{ dieceResource ->
-                Image(
-                    painter = painterResource(id = dieceResource),
-                    contentDescription = "Dice",
-                    modifier = Modifier.size(60.dp).padding(8.dp)
-                )
-
-            }
+            Text("Player Score: $playerScore")
+            Text("Computer Score: $computerScore")
         }
 
-        Row {
-            // Throw button
-            Button(onClick = {
-                playerDiceState.value = List(5) { diceImages.random() }
-                computerDiceState.value = List(5) { diceImages.random() }
-                valuesOfCurrentDices(playerDiceState.value, currentValueState.value)
-                println(currentValueState)
-            }) {
-                Text("Throw")
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+
+            Spacer(Modifier.height(50.dp))
+
+            // row to display dice images of human player
+            Text("Computer")
+            Spacer(Modifier.height(10.dp))
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                computerDiceState.value.forEach { computerDieceResource ->
+                    Image(
+                        painter = painterResource(id = computerDieceResource),
+                        contentDescription = "Dice",
+                        modifier = Modifier
+                            .size(60.dp)
+                            .padding(8.dp)
+                    )
+
+                }
+            }
+            Spacer(Modifier.height(30.dp))
+
+            Text("Player")
+            Spacer(Modifier.height(10.dp))
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                playerDiceState.value.forEach { dieceResource ->
+                    Image(
+                        painter = painterResource(id = dieceResource),
+                        contentDescription = "Dice",
+                        modifier = Modifier
+                            .size(60.dp)
+                            .padding(8.dp)
+                    )
+
+                }
             }
 
-            Spacer(Modifier.width(20.dp))
-            // Score button
-            Button(onClick = {
-                println("Score")
-                playerScore = addPlayerValues(currentValueState.value, playerScore)
-                println(playerScore)
-            }) {
-                Text("Score")
+            Row {
+                // Throw button
+                Button(onClick = {
+                    playerDiceState.value = List(5) { diceImages.random() }
+                    computerDiceState.value = List(5) { diceImages.random() }
+                    valuesOfCurrentDices(playerDiceState.value, currentValueState.value)
+                    println(currentValueState)
+                }) {
+                    Text("Throw")
+                }
+
+                Spacer(Modifier.width(20.dp))
+                // Score button
+                Button(onClick = {
+                    println("Score")
+                    playerScore = addPlayerValues(currentValueState.value, playerScore)
+                    println(playerScore)
+                }) {
+                    Text("Score")
+                }
             }
+
         }
-
     }
 }
 
