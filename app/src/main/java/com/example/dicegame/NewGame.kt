@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import kotlin.random.Random
 
 val diceImages = listOf(
     R.drawable.one,
@@ -41,19 +42,20 @@ class NewGame : ComponentActivity() {
 
 @Composable
 fun Game() {
-    val playerDiceState = remember { mutableStateOf(List(5) { diceImages.random() }) }
-    val computerDiceState = remember { mutableStateOf(List(5) { diceImages.random() }) }
+    val playerDiceState = remember { mutableStateOf(List(5) { diceImages[0] }) }
+    val computerDiceState = remember { mutableStateOf(List(5) { diceImages[0] }) }
     val currentPlayerValueState = remember { mutableStateOf(MutableList(5) { diceValues[0] }) }
     val currentComputerValueState = remember { mutableStateOf(MutableList(5) { diceValues[0] }) }
 
     var playerScore by remember { mutableStateOf(0) }
     var computerScore by remember { mutableStateOf(0) }
     var canScore by remember { mutableStateOf(false) }
-    var throwType by remember { mutableStateOf("Throw") }
+    var playerThrowType by remember { mutableStateOf("Throw") }
     var reRollCount by remember { mutableStateOf(0) }
 
     // Track which dice are selected
-    val selectedDice = remember { mutableStateListOf(false, false, false, false, false) }
+    val selectedPlayerDice = remember { mutableStateListOf(false, false, false, false, false) }
+//    val selectedComputerDice = remember { mutableStateListOf(false, false, false, false, false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -102,10 +104,10 @@ fun Game() {
                         modifier = Modifier
                             .size(60.dp)
                             .padding(8.dp)
-                            .border(2.dp, if (selectedDice[index]) Color.Green else Color.Transparent)
+                            .border(2.dp, if (selectedPlayerDice[index]) Color.Green else Color.Transparent)
                             .clickable {
-                                if (throwType == "ReRoll")
-                                selectedDice[index] = !selectedDice[index] // Toggle selection
+                                if (playerThrowType == "ReRoll")
+                                selectedPlayerDice[index] = !selectedPlayerDice[index] // Toggle selection
                             }
                     )
                 }
@@ -114,35 +116,44 @@ fun Game() {
             Row {
                 // Throw / ReRoll button
                 Button(onClick = {
-                    if (throwType == "Throw") {
+                    if (playerThrowType == "Throw") {
                         playerDiceState.value = List(5) { diceImages.random() }
-                        computerDiceState.value = List(5) { diceImages.random() }
+//                        computerDiceState.value = List(5) { diceImages.random() }
+                        computerRandom(
+                            computerDiceState,
+                            currentComputerValueState,
+                            ::valuesOfCurrentDices,
+                        )
 
-                        valuesOfCurrentDices(computerDiceState.value, currentComputerValueState.value)
+//                        valuesOfCurrentDices(computerDiceState.value, currentComputerValueState.value)
                         valuesOfCurrentDices(playerDiceState.value, currentPlayerValueState.value)
 
                         canScore = true
-                        throwType = "ReRoll"
-                    } else if (throwType == "ReRoll") {
+                        playerThrowType = "ReRoll"
+                    } else if (playerThrowType == "ReRoll") {
                         playerDiceState.value = playerDiceState.value.mapIndexed { index, dice ->
-                            if (selectedDice[index]) dice else diceImages.random()
+                            if (selectedPlayerDice[index]){
+                                dice
+                            }else {
+                                diceImages.random()
+                            }
                         }
                         valuesOfCurrentDices(playerDiceState.value, currentPlayerValueState.value)
 
                         canScore = true
                         reRollCount++
                         if (reRollCount == 2) {
-                            throwType = "Throw"
+                            playerThrowType = "Throw"
                             reRollCount = 0
                             computerScore = addComputerValues(currentComputerValueState.value, computerScore)
                             playerScore = addPlayerValues(currentPlayerValueState.value, playerScore)
 
                             // Reset selected dice after scoring
-                            selectedDice.fill(false)
+                            selectedPlayerDice.fill(false)
                         }
                     }
                 }) {
-                    Text(if (throwType == "Throw") "Throw" else "ReRoll")
+                    Text(if (playerThrowType == "Throw") "Throw" else "ReRoll")
                 }
 
                 Spacer(Modifier.width(20.dp))
@@ -150,14 +161,16 @@ fun Game() {
                 // Score button
                 Button(onClick = {
                     if (canScore) {
+
                         computerScore = addComputerValues(currentComputerValueState.value, computerScore)
                         playerScore = addPlayerValues(currentPlayerValueState.value, playerScore)
 
+
                         canScore = false
-                        throwType = "Throw"
+                        playerThrowType = "Throw"
 
                         // Reset selected dice after scoring
-                        selectedDice.fill(false)
+                        selectedPlayerDice.fill(false)
                     }
                 }) {
                     Text("Score")
@@ -182,4 +195,55 @@ fun addPlayerValues(currentValueState: List<Int>, playerScore: Int): Int {
 
 fun addComputerValues(currentValueState: List<Int>, computerScore: Int): Int {
     return computerScore + currentValueState.sum()
+}
+
+fun computerRandom(
+    computerDiceState: MutableState<List<Int>>,
+    currentComputerValueState: MutableState<MutableList<Int>>,
+    valuesOfCurrentDices: (List<Int>, MutableList<Int>) -> Unit,
+){
+    var throwCount: Int = Random.nextInt(3) // 0 - Throw, 1 - one reroll, 2 - two rerolls
+    println(throwCount)
+    computerDiceState.value = List(5) { diceImages.random() }
+    valuesOfCurrentDices(computerDiceState.value, currentComputerValueState.value)
+    println("Computer Throw: ${currentComputerValueState.value}")
+
+    if (throwCount != 0){ // ReRoll
+        for (i in 1..throwCount) {
+
+            // random to decide whether to keep some dice or not
+            var keepDice: Boolean = Random.nextBoolean()
+            var noOfDicesKeeping: Int = Random.nextInt(4)+1 //to track how many dices keeping in rerolls.
+            // Note that the number of dices can be keep without rerolling has limited
+            // to 4 because at least one dice must reroll
+            var keepingDicesIndexes: MutableList<Int> = mutableListOf()
+
+            if(keepDice){
+                for (i in 1..noOfDicesKeeping){
+                    var value: Int = Random.nextInt(5)
+                    while (value in keepingDicesIndexes){
+                        value = Random.nextInt(5)
+                    }
+                    keepingDicesIndexes.add(value)
+                }
+                println("Keeping dice indexes : $keepingDicesIndexes")
+
+                computerDiceState.value = computerDiceState.value.mapIndexed { index, dice ->
+                    if (index in keepingDicesIndexes){
+                        dice
+                    }else {
+                        diceImages.random()
+                    }
+                }
+                valuesOfCurrentDices(computerDiceState.value, currentComputerValueState.value)
+                println("Computer reroll $i: ${currentComputerValueState.value}")
+
+            }else {
+                computerDiceState.value = List(5) { diceImages.random() }
+                valuesOfCurrentDices(computerDiceState.value, currentComputerValueState.value)
+                println("Computer reroll $i: ${currentComputerValueState.value}")
+            }
+        }
+
+    }
 }
